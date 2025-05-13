@@ -1,5 +1,9 @@
+# PATH: src/transform.py
+
 import pandas as pd, re
 from datetime import datetime
+
+from src.utils.reglas_asterisco_tareas import asignar_tarea_asterisco
 
 # ---------------------------------------------------------------------- #
 #  -------------------------  NORMALIZACIÓN  --------------------------- #
@@ -106,49 +110,68 @@ def _aplicar_maestro(base: pd.DataFrame, maestro: pd.DataFrame) -> pd.DataFrame:
     return base
 
 
-def _mapear_cod_tarea(
-    base: pd.DataFrame, asignaciones: pd.DataFrame, tareas_bd: pd.DataFrame
-) -> pd.Series:
-    """
-    Devuelve una Serie con el código de tarea final según la hoja *asignaciones_tareas*.
+# … import existentes …
+from src.utils.reglas_asterisco_tareas import asignar_tarea_asterisco
+# ↑ nueva importación
 
-    - Si `AsignarATarea` aparece directamente en BD → se usa.
-    - Si es '*'      → se deja texto placeholder.
-    - Si es '#ESPECIAL#' → se deja en blanco (pendiente).
-    - Si no existe en T_TAREAS se deja en blanco para revisión.
+
+def _mapear_cod_tarea(
+    base: pd.DataFrame,
+    asignaciones: pd.DataFrame,
+    tareas_bd: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Devuelve un DataFrame con:
+        • CodTarea         → código final asignado
+        • AsignarATarea    → valor bruto de la hoja *asignaciones_tareas*
     """
     asign = asignaciones.rename(columns=str.strip)
     asign["Tarea"] = asign["Tarea"].str.strip()
     asign["AsignarATarea"] = asign["AsignarATarea"].astype(str).str.strip()
+    mapa_asign = dict(zip(asign["Tarea"], asign["AsignarATarea"]))
 
-    # diccionario tarea original -> asignación
-    mapa = dict(zip(asign["Tarea"], asign["AsignarATarea"]))
+    tareas_validas = set(tareas_bd["CodTarea"].astype(str))
 
-    # Serie resultante
-    cod_tarea = []
+    cod_out, asign_out = [], []
 
-    for act in base["actividad"]:
-        act = str(act).strip()
-        if act in mapa:
-            dest = mapa[act]
+    for _, row in base.iterrows():
+        act_original  = str(row["actividad"]).strip()
+        asignacion    = mapa_asign.get(act_original, "")      # puede venir vacío
+        chapa         = str(row["idusuario"]).strip()
+        categoria     = str(row.get("CATEGORIA", "")).strip().lower()
 
-            if dest == "*":
-                cod_tarea.append("PEND_ASIGNACION_*")  # placeholder
-            elif dest == "#ESPECIAL#":
-                cod_tarea.append("")  # se resolverá más adelante
-            else:
-                cod_tarea.append(dest)
+        # ---------------- resolución -----------------
+        if asignacion == "*":
+            codigo = (
+                asignar_tarea_asterisco(
+                    actividad=act_original,
+                    chapa=chapa,
+                    categoria=categoria,
+                )
+                or "PEND_ASIGNACION_*"
+            )
+        elif asignacion == "#ESPECIAL#":
+            codigo = ""
         else:
-            cod_tarea.append("")  # no encontrado, revisar
+            codigo = asignacion
 
-    # Verificamos que el código exista en T_TAREAS; si no, vaciamos
-    existentes = set(tareas_bd["CodTarea"].astype(str))
-    cod_tarea = pd.Series(cod_tarea).apply(
-        lambda x: x if x in existentes or x.startswith("PEND_") else ""
-    )
-    return cod_tarea
+        # --- verificar que exista en T_TAREAS --------------
+        if (
+            codigo
+            and not codigo.startswith("PEND_")
+            and codigo not in tareas_validas
+        ):
+            codigo = ""        # marcar para revisión
+
+        cod_out.append(codigo)
+        asign_out.append(asignacion)
+
+    return pd.DataFrame({"CodTarea": cod_out, "AsignarATarea": asign_out})
 
 
+# ------------------------------------------------------------------ #
+# ----------------  CONSTRUCCIÓN DEL DATAFRAME FINAL  -------------- #
+# ------------------------------------------------------------------ #
 def preparar_anotaciones(
     *,
     base: pd.DataFrame,
@@ -159,25 +182,25 @@ def preparar_anotaciones(
     primer_id: int = 47000,
 ) -> pd.DataFrame:
     """
-    A partir de *base* genera el DataFrame que se exportará como
-    **T_ANOTACIONES_SUBIR.xlsx** (solo campos completados hasta el momento).
+    Genera **T_ANOTACIONES_SUBIR** e incluye dos columnas de ayuda:
+
+        • DBG_TareaOriginal   → texto de la columna *ACTIVIDAD/TAREA*
+        • DBG_AsignarATarea   → valor de la columna *AsignarATarea*
+          (ya resuelto el caso «*» / «#ESPECIAL#»)
     """
-    # Aplicar reglas de obra
+    # --- ajustes de obra (borrar / renombrar claves)
     base = _aplicar_maestro(base, maestro_obras).copy()
 
-    # Conversión horas
+    # --- numérico a CHoras
     base["CHoras"] = pd.to_numeric(base["choras"], errors="coerce")
 
-    # CodTarea provisional
-    base["CodTarea"] = _mapear_cod_tarea(base, asignaciones, tareas_bd)
+    # --- mapeo de tarea + columnas debug
+    tarea_df = _mapear_cod_tarea(base, asignaciones, tareas_bd)
+    base = pd.concat([base.reset_index(drop=True), tarea_df], axis=1)
 
-    # Fecha/hora actual
     ahora = datetime.now()
-
-    # Mapeo IdTipo (PagaHE)
     paga_he = dict(zip(usuarios_bd["IdUsuario"], usuarios_bd["PagaHE"]))
 
-    # Construcción de la tabla final
     anot = pd.DataFrame(
         {
             "IdAnot": range(primer_id, primer_id + len(base)),
@@ -185,7 +208,7 @@ def preparar_anotaciones(
             "FAnotacion": pd.to_datetime(base["fecha"]).dt.strftime("%d/%m/%Y"),
             "ClaveObra": base["ClaveObra"],
             "CodObra": "",
-            "IdProceso": "",  # pendiente de reglas
+            "IdProceso": "",                    # se rellenará más adelante
             "CodTarea": base["CodTarea"],
             "DescAnot": base["obs"].fillna(""),
             "CEuros": "",
@@ -197,6 +220,9 @@ def preparar_anotaciones(
             "IdTipo": base["idusuario"].map(paga_he),
             "TasaHora": 80,
             "NumModOT": "",
+            # --- columnas de depuración ---
+            "DBG_TareaOriginal": base["actividad"],
+            "DBG_AsignarATarea": base["AsignarATarea"],
         }
     )
 

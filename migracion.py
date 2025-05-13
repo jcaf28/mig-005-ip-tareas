@@ -1,3 +1,5 @@
+# PATH: migracion.py
+
 """Punto de entrada de la migración IP-Tareas."""
 
 from src.config import ARCHIVOS

@@ -47,7 +47,7 @@ def main() -> None:
     )
 
     # ------------- GENERACIÓN T_ANOTACIONES_SUBIR -------------
-    anotaciones_subir = preparar_anotaciones(
+    anotaciones_subir, base_trazada = preparar_anotaciones(
         base=base,
         asignaciones=asign,
         usuarios_bd=tablas_bd["usuarios"],
@@ -65,10 +65,9 @@ def main() -> None:
             "AUX_T_OBRAS_SUBIR_DEBE_CONTENER": obras_subir,
             "AUX_T_OBRAS_CARGADO_A_SUBIR_DEBE_CONTENER": cargado_a_subir,
             "T_ANOTACIONES_SUBIR": anotaciones_subir,
-            "BASE_PROCESADA": base,
+            "BASE_PROCESADA": base_trazada,          # ← ya incluye IdAnot
         },
     )
-
 
 if __name__ == "__main__":
     main()

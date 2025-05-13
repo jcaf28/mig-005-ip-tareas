@@ -172,6 +172,9 @@ def _mapear_cod_tarea(
 # ------------------------------------------------------------------ #
 # ----------------  CONSTRUCCIÓN DEL DATAFRAME FINAL  -------------- #
 # ------------------------------------------------------------------ #
+# ------------------------------------------------------------------ #
+# ----------------  CONSTRUCCIÓN DEL DATAFRAME FINAL  -------------- #
+# ------------------------------------------------------------------ #
 def preparar_anotaciones(
     *,
     base: pd.DataFrame,
@@ -180,13 +183,12 @@ def preparar_anotaciones(
     maestro_obras: pd.DataFrame,
     tareas_bd: pd.DataFrame,
     primer_id: int = 47000,
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Genera **T_ANOTACIONES_SUBIR** e incluye dos columnas de ayuda:
-
-        • DBG_TareaOriginal   → texto de la columna *ACTIVIDAD/TAREA*
-        • DBG_AsignarATarea   → valor de la columna *AsignarATarea*
-          (ya resuelto el caso «*» / «#ESPECIAL#»)
+    Devuelve una tupla:
+        • T_ANOTACIONES_SUBIR (DataFrame listo para Excel)
+        • BASE_PROCESADA      (mismo contenido que *base* pero con la
+          columna IdAnot añadida para trazabilidad)
     """
     # --- ajustes de obra (borrar / renombrar claves)
     base = _aplicar_maestro(base, maestro_obras).copy()
@@ -198,12 +200,16 @@ def preparar_anotaciones(
     tarea_df = _mapear_cod_tarea(base, asignaciones, tareas_bd)
     base = pd.concat([base.reset_index(drop=True), tarea_df], axis=1)
 
-    ahora = datetime.now()
+    # ---------- IdAnot para ambas tablas ---------------
+    ids = list(range(primer_id, primer_id + len(base)))
+    base["IdAnot"] = ids          # ← trazabilidad
+
+    ahora   = datetime.now()
     paga_he = dict(zip(usuarios_bd["IdUsuario"], usuarios_bd["PagaHE"]))
 
     anot = pd.DataFrame(
         {
-            "IdAnot": range(primer_id, primer_id + len(base)),
+            "IdAnot": ids,
             "Idusuario": base["idusuario"],
             "FAnotacion": pd.to_datetime(base["fecha"]).dt.strftime("%d/%m/%Y"),
             "ClaveObra": base["ClaveObra"],
@@ -226,4 +232,4 @@ def preparar_anotaciones(
         }
     )
 
-    return anot
+    return anot, base   # ← devolvemos ambos

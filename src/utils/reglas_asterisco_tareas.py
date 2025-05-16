@@ -85,7 +85,7 @@ def _i20(chapa: str, categoria: str) -> str:
 def _i30(chapa: str, categoria: str) -> str:
     if categoria == PROC:
         return "UE30"
-    # “Resto: descartar”
+    # "Resto: descartar"
     return ""
 
 
@@ -94,6 +94,15 @@ def _u40(chapa: str, categoria: str) -> str:
         return "UE64"
     if categoria == UTI:
         return "UE64" if chapa == "12591" else "UT64"
+    return ""
+
+
+def _u41(_, categoria: str) -> str:
+    # Nueva función para U41-FASE MODIFICACIONES MEJORA
+    if categoria == PROC:
+        return "UE10"
+    if categoria == UTI:
+        return "UT20"
     return ""
 
 
@@ -190,6 +199,7 @@ _RULES: dict[str, Callable[[str, str], str]] = {
     "I20-FASE IMPLANTACION UTILLAJES BOGIE ACABADO": _i20,
     "I30-FASE IMPLANTACION UTILLAJES CAJAS ESTRUCTURA": _i30,
     "U40-FASE MODIFICACIONES PRODUCTO": _u40,
+    "U41-FASE MODIFICACIONES MEJORA": _u41,  # Nueva entrada para U41
     "U80-FASE CIERRE PROYECTO: Analisis Coste/Mejoras/Incidencias/Utillajes fin de obra": _u80,
     "U21-FASE COORDINACION: Analisis de planos y creación del listado de herramientas": _u21,
     "U20-FASE COORDINACION: Definir proceso fabr. + Reuniones IP/Fabr. + Acta + Informe mejora + Listado utillajes": _u20,

@@ -1,3 +1,5 @@
+# PATH: migracion.py
+
 from src.config import ARCHIVOS
 from src.extract import (
     load_tablas_bd,

@@ -88,15 +88,27 @@ def tablas_auxiliares(
 def _aplicar_maestro(base: pd.DataFrame, maestro: pd.DataFrame) -> pd.DataFrame:
     """Aplica las reglas del maestro de modificaciones de obra."""
     maestro = maestro.rename(columns=str.strip)
+    
+    # 0) Guardar los valores originales para depuración
+    base["DBG_Proyecto_original"] = base["proyecto_codigo"].copy()
+    if "CARGADO A" in base.columns:
+        base["DBG_CargadoA_original"] = base["CARGADO A"].copy()
 
-    # 1) Filas que hay que eliminar completamente
+    # 1) Identificar obras a borrar
     borrar = maestro.loc[
         maestro["CambiarAObra"].astype(str).str.lower() == "borrar", "ClaveObra"
-    ].astype(str)
+    ].astype(str).tolist()
+    
+    # 1.a) Eliminar filas donde proyecto_codigo está en la lista de borrar
     base = base.loc[~base["proyecto_codigo"].isin(borrar)].copy()
+    
+    # 1.b) Eliminar filas donde CARGADO A está en la lista de borrar
+    if "CARGADO A" in base.columns:
+        base = base.loc[~base["CARGADO A"].astype(str).isin(borrar)].copy()
 
     # 2) Cambios de clave obra
     cambios = maestro.dropna(subset=["CambiarAObra"])
+    cambios = cambios[cambios["CambiarAObra"].astype(str).str.lower() != "borrar"]  # Excluir las obras a borrar
     mapa = dict(
         zip(
             cambios["ClaveObra"].astype(str),
@@ -107,8 +119,20 @@ def _aplicar_maestro(base: pd.DataFrame, maestro: pd.DataFrame) -> pd.DataFrame:
 
     # Donde no haya coincidencia se mantiene la clave original
     base["ClaveObra"] = base["ClaveObra"].fillna(base["proyecto_codigo"])
+    
+    # 3) Aplicar las mismas reglas al campo "CARGADO A"
+    if "CARGADO A" in base.columns:
+        # Solo intentamos reemplazar si hay valores no nulos
+        cargado_mask = base["CARGADO A"].notna()
+        if cargado_mask.any():
+            # Aplicamos el mapeo solo a las filas con valores no nulos
+            base.loc[cargado_mask, "CARGADO A"] = (
+                base.loc[cargado_mask, "CARGADO A"]
+                .astype(str)
+                .replace(mapa)
+            )
+    
     return base
-
 
 # … import existentes …
 from src.utils.reglas_asterisco_tareas import asignar_tarea_asterisco
@@ -228,7 +252,7 @@ def preparar_anotaciones(
             "NumModOT": "",
             # --- columnas de depuración ---
             "DBG_TareaOriginal": base["actividad"],
-            "DBG_AsignarATarea": base["AsignarATarea"],
+            "DBG_AsignarATarea": base["AsignarATarea"]
         }
     )
 

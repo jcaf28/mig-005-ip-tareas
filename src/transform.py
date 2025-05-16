@@ -257,3 +257,43 @@ def preparar_anotaciones(
     )
 
     return anot, base   # ← devolvemos ambos
+
+def preparar_anotaciones_valid(
+    anotaciones_subir: pd.DataFrame,
+    base_trazada: pd.DataFrame,
+    fecha_validacion: str = "15/05/2025",
+    id_usuario_validacion: str = "18287"
+) -> pd.DataFrame:
+    """
+    Genera la tabla T_ANOTACIONES_VALID_SUBIR a partir de T_ANOTACIONES_SUBIR.
+    
+    Args:
+        anotaciones_subir: DataFrame con las anotaciones a insertar
+        base_trazada: DataFrame con los datos originales (incluye IdAnot y CARGADO A)
+        fecha_validacion: Fecha de validación (formato dd/mm/yyyy)
+        id_usuario_validacion: ID del usuario que realiza la validación
+        
+    Returns:
+        DataFrame con la estructura de T_ANOTACIONES_VALID
+    """
+    # Crear un diccionario para mapear IdAnot a CARGADO A
+    id_to_cargado = dict(zip(base_trazada["IdAnot"], base_trazada["CARGADO A"]))
+    
+    # Crear el DataFrame de anotaciones validadas
+    valid = pd.DataFrame({
+        "IdAnot": anotaciones_subir["IdAnot"],
+        "ClaveObra": [id_to_cargado.get(id_anot, "") for id_anot in anotaciones_subir["IdAnot"]],
+        "IdTipoV": "H",
+        "FValid": fecha_validacion,
+        "VEuros": 0,
+        "VHoras": anotaciones_subir["CHoras"],
+        "FCREAV": fecha_validacion,
+        "FMODIFIV": fecha_validacion,
+        "IdUsuarioCV": id_usuario_validacion,
+        "DctaHoras": "S"
+    })
+    
+    # Asegurar que ClaveObra no tenga valores nulos (reemplazar por string vacío)
+    valid["ClaveObra"] = valid["ClaveObra"].fillna("")
+    
+    return valid

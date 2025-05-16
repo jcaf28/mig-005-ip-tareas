@@ -1,7 +1,3 @@
-# PATH: migracion.py
-
-"""Punto de entrada de la migración IP-Tareas."""
-
 from src.config import ARCHIVOS
 from src.extract import (
     load_tablas_bd,
@@ -15,6 +11,7 @@ from src.transform import (
     tablas_auxiliares,
     analizar_cargado_a,
     preparar_anotaciones,
+    preparar_anotaciones_valid,  # Añadir esta importación
 )
 from src.export import crear_output_dir, exportar_dataframes
 
@@ -55,6 +52,14 @@ def main() -> None:
         tareas_bd=tablas_bd["tareas"],
         primer_id=47000,
     )
+    
+    # ------------- GENERACIÓN T_ANOTACIONES_VALID_SUBIR -------------
+    anotaciones_valid_subir = preparar_anotaciones_valid(
+        anotaciones_subir=anotaciones_subir,
+        base_trazada=base_trazada,
+        fecha_validacion="15/05/2025",
+        id_usuario_validacion="18287"
+    )
 
     # ------------- EXPORT -------------
     output_dir = crear_output_dir(ARCHIVOS)
@@ -65,6 +70,7 @@ def main() -> None:
             "AUX_T_OBRAS_SUBIR_DEBE_CONTENER": obras_subir,
             "AUX_T_OBRAS_CARGADO_A_SUBIR_DEBE_CONTENER": cargado_a_subir,
             "T_ANOTACIONES_SUBIR": anotaciones_subir,
+            "T_ANOTACIONES_VALID_SUBIR": anotaciones_valid_subir,  # Añadir esta línea
             "BASE_PROCESADA": base_trazada,          # ← ya incluye IdAnot
         },
     )

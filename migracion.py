@@ -10,6 +10,7 @@ from src.transform import (
     normaliza_columnas,
     limpia_idusuario,
     desglosa_proyecto,
+    borrar_registros_usuarios_incorrectos,
     tablas_auxiliares,
     analizar_cargado_a,
     preparar_anotaciones,
@@ -33,6 +34,7 @@ def main() -> None:
         base.pipe(normaliza_columnas)
         .pipe(limpia_idusuario)
         .pipe(desglosa_proyecto)
+        .pipe(borrar_registros_usuarios_incorrectos)
     )
 
     # Auxiliares (usuarios/obras que faltan) -------------------------------

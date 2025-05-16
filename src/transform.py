@@ -18,17 +18,14 @@ RENAME = {
     "OBSERVACIONES": "obs",
 }
 
-
 def normaliza_columnas(df: pd.DataFrame) -> pd.DataFrame:
     return df.rename(columns=RENAME)
-
 
 def limpia_idusuario(df: pd.DataFrame) -> pd.DataFrame:
     df["idusuario"] = (
         df["idusuario_raw"].astype(str).str.replace(r"\.0$", "", regex=True).str.strip()
     )
     return df
-
 
 def desglosa_proyecto(df: pd.DataFrame) -> pd.DataFrame:
     pat = re.compile(r"\((\d+)\)")
@@ -40,7 +37,35 @@ def desglosa_proyecto(df: pd.DataFrame) -> pd.DataFrame:
     )
     return df
 
-
+def borrar_registros_usuarios_incorrectos(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Elimina registros cuyo idusuario está en una lista predefinida de usuarios incorrectos.
+    
+    Args:
+        df: DataFrame con los datos a filtrar
+        
+    Returns:
+        DataFrame sin los usuarios incorrectos
+    """
+    usuarios_incorrectos = [
+        "12682",
+        "12742",
+        "11281",
+        "43179",
+        "11452",
+        "14328",
+        "14329",
+        "11292"
+    ]
+    
+    # Convertir a string para asegurar comparación correcta
+    df_filtrado = df[~df["idusuario"].astype(str).isin(usuarios_incorrectos)].copy()
+    
+    # Informar de cuántos registros se eliminaron
+    registros_eliminados = len(df) - len(df_filtrado)
+    print(f"Se eliminaron {registros_eliminados} registros de usuarios incorrectos")
+    
+    return df_filtrado
 # ---------------------------------------------------------------------- #
 #  -------------------------  AUXILIARES  ------------------------------ #
 # ---------------------------------------------------------------------- #
@@ -59,7 +84,6 @@ def analizar_cargado_a(
     ]
 
     return pd.DataFrame({"ClaveObra": faltantes, "NomObra": [""] * len(faltantes)})
-
 
 def tablas_auxiliares(
     base: pd.DataFrame, usuarios: pd.DataFrame, obras: pd.DataFrame
@@ -80,7 +104,6 @@ def tablas_auxiliares(
         .rename(columns={"proyecto_codigo": "ClaveObra", "proyecto_nombre": "NomObra"})
     )
     return usuarios_subir, obras_subir
-
 
 # ---------------------------------------------------------------------- #
 #  --------------------  PREPARACIÓN ANOTACIONES  ---------------------- #
@@ -134,11 +157,6 @@ def _aplicar_maestro(base: pd.DataFrame, maestro: pd.DataFrame) -> pd.DataFrame:
     
     return base
 
-# … import existentes …
-from src.utils.reglas_asterisco_tareas import asignar_tarea_asterisco
-# ↑ nueva importación
-
-
 def _mapear_cod_tarea(
     base: pd.DataFrame,
     asignaciones: pd.DataFrame,
@@ -191,7 +209,6 @@ def _mapear_cod_tarea(
         asign_out.append(asignacion)
 
     return pd.DataFrame({"CodTarea": cod_out, "AsignarATarea": asign_out})
-
 
 # ------------------------------------------------------------------ #
 # ----------------  CONSTRUCCIÓN DEL DATAFRAME FINAL  -------------- #

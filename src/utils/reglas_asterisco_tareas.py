@@ -112,15 +112,35 @@ def _u80(_, categoria: str) -> str:
 
 def _u21(chapa: str, categoria: str) -> str:
     if categoria == PROC:
-        return "A20" if chapa == "12705" else "UE20"
-    if categoria == UTI:
-        return "UE20" if chapa == "12591" else "UT16"
+        # Para categoria procesos: UE20 a excepcion de 12705 cuya tarea es A20
+        if chapa == "12705":
+            return "A20"
+        else:
+            return "UE20"
+    elif categoria == UTI:
+        # Para categoria utillajes: UT16 a excepcion de 12591 cuya tarea es UE20
+        if chapa == "12591":
+            return "UE20"
+        else:
+            return "UT16"
     return ""
 
 
 def _u20(chapa: str, categoria: str) -> str:
-    # Misma lógica que U21
-    return _u21(chapa, categoria)
+    # Misma lógica que U21 según los requisitos
+    if categoria == PROC:
+        # Para categoria procesos: UE20 a excepcion de 12705 cuya tarea es A20
+        if chapa == "12705":
+            return "A20"
+        else:
+            return "UE20"
+    elif categoria == UTI:
+        # Para categoria utillajes: UT16 a excepcion de 12591 cuya tarea es UE20
+        if chapa == "12591":
+            return "UE20"
+        else:
+            return "UT16"
+    return ""
 
 
 def _f20(chapa: str, categoria: str) -> str:

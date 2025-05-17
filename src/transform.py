@@ -183,6 +183,13 @@ def _mapear_cod_tarea(
         categoria     = str(row.get("CATEGORIA", "")).strip().lower()
 
         # ---------------- resolución -----------------
+        cond_debug = (
+            act_original == "U20-FASE COORDINACION: Definir proceso fabr. + Reuniones IP/Fabr. + Acta + Informe mejora + Listado utillajes"
+            or  act_original == "U21-FASE COORDINACION: Analisis de planos y creación del listado de herramientas"
+        )
+        if cond_debug:
+            print(f"Asignación U20 o U21. Asignación: {asignacion}")
+        
         if asignacion == "*":
             codigo = (
                 asignar_tarea_asterisco(
@@ -198,6 +205,11 @@ def _mapear_cod_tarea(
             codigo = asignacion
 
         # --- verificar que exista en T_TAREAS --------------
+
+        if cond_debug:
+            print(f"Asignación: {asignacion} → Código: {codigo}")
+        
+        
         if (
             codigo
             and not codigo.startswith("PEND_")

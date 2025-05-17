@@ -111,6 +111,9 @@ Public Sub MigracionUsuariosAnotaciones()
     logStr = ""
     
     ' NUEVAS IMPORTACIONES (ORDEN ESPECÍFICO)
+    ' Importar áreas
+    logStr = logStr & ">> Insertando T_AREAS_SUBIR.xlsx en T_AREAS..." & vbCrLf
+    Call ImportarDesdeExcelRapido(ARCHIVOS_PATH & "\T_AREAS_SUBIR.xlsx", "T_AREAS", logStr)
     ' Importar procesos
     logStr = logStr & ">> Insertando T_PROCESOS_SUBIR.xlsx en T_PROCESOS..." & vbCrLf
     Call ImportarDesdeExcelRapido(ARCHIVOS_PATH & "\T_PROCESOS_SUBIR.xlsx", "T_PROCESOS", logStr)
